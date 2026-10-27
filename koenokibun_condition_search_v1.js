@@ -10,6 +10,23 @@
   }
   if (!isTargetPage()) return;
 
+
+  function injectStyles() {
+    if (document.getElementById("kk-condition-runtime-style")) return;
+    var s = document.createElement("style");
+    s.id = "kk-condition-runtime-style";
+    s.textContent =
+      "#kk-results{margin-top:14px}" +
+      "#kk-results .kk-work{border:1px solid #ecdde2;background:#fff;padding:14px 16px;margin:0 0 12px;border-radius:12px}" +
+      "#kk-results .kk-work-title{font-weight:700;font-size:1rem;line-height:1.55;margin-bottom:5px}" +
+      "#kk-results .kk-work-meta{font-size:.79rem;color:#777;line-height:1.6;margin-bottom:7px}" +
+      "#kk-results .kk-work-warn{font-size:.8rem;color:#9a4b56;background:#fff4f5;padding:7px 9px;border-radius:7px;margin:7px 0}" +
+      "#kk-results .kk-work-link{display:inline-block;margin-top:7px;padding:7px 12px;border:1px solid #e5cbd3;border-radius:999px;background:#fff8fa;color:#222;text-decoration:none;font-weight:700;font-size:.82rem}" +
+      "#kk-results .kk-empty{border:1px dashed #decfd4;border-radius:10px;padding:14px;color:#777;background:#fcfafb}" +
+      "#kk-cond-app .kk-mode-btn.is-active{background:#333!important;color:#fff!important;border-color:#333!important}";
+    document.head.appendChild(s);
+  }
+
   function norm(v) {
     return String(v == null ? "" : v)
       .normalize("NFKC")
@@ -47,6 +64,8 @@
   function latestFirst(a, b) {
     return String(b.releaseDate || "").localeCompare(String(a.releaseDate || ""));
   }
+
+  injectStyles();
 
   var app = document.getElementById("kk-cond-app");
   if (!app) return;
