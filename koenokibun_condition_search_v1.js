@@ -26,7 +26,7 @@
       "#kk-results .kk-work-warn{font-size:.8rem;color:#9a4b56;background:#fff4f5;padding:7px 9px;border-radius:7px;margin:7px 0}" +
       "#kk-results .kk-work-link{display:inline-block;margin-top:7px;padding:7px 12px;border:1px solid #e5cbd3;border-radius:999px;background:#fff8fa;color:#222;text-decoration:none;font-weight:700;font-size:.82rem}" +
       "#kk-results .kk-empty{border:1px dashed #decfd4;border-radius:10px;padding:14px;color:#777;background:#fcfafb}" +
-      "#kk-cond-app .kk-mode-btn.is-active{background:#333!important;color:#fff!important;border-color:#333!important}"+"".concat("#koe-home-cv{width:100%;max-width:320px;padding:9px 10px;border:1px solid #e5cbd3;border-radius:8px;background:#fff;margin:4px 0 10px}");
+      "#kk-cond-app .kk-mode-btn.is-active{background:#333!important;color:#fff!important;border-color:#333!important}"+"".concat("#koe-home-cv{width:100%;max-width:320px;padding:9px 10px;border:1px solid #e5cbd3;border-radius:8px;background:#fff;margin:4px 0 10px}"+".koe-feature-card{border:1px solid #ecdde2;background:#fff;padding:12px 14px;margin:10px 0;border-radius:10px}"+".koe-feature-card>div{display:flex;justify-content:space-between;gap:10px;align-items:center}"+".koe-feature-card strong{font-size:.96rem}.koe-feature-card span{font-size:.76rem;color:#777}"+".koe-feature-card p{margin:6px 0 8px;font-size:.86rem;color:#655b5f}");
     document.head.appendChild(s);
   }
 
@@ -128,6 +128,43 @@
       '<div class="koe-mini-note">※発売日が確認できる作品だけを集計しています。</div>';
   }
 
+  function featureMatchCount(works, spec) {
+    return works.filter(function(w){
+      if(spec.age && w.ageRating!==spec.age) return false;
+      var inc=spec.include||[], exc=spec.exclude||[];
+      if(inc.length){
+        var hits=inc.map(function(t){return matchTerm(w,t);});
+        if((spec.mode||"and")==="or"){ if(!hits.some(Boolean)) return false; }
+        else { if(!hits.every(Boolean)) return false; }
+      }
+      if(exc.length && exc.some(function(t){return matchTerm(w,t);} )) return false;
+      return true;
+    }).length;
+  }
+  function featureUrl(spec) {
+    var p=new URLSearchParams();
+    if(spec.include&&spec.include.length)p.set("include",spec.include.join(" "));
+    if(spec.exclude&&spec.exclude.length)p.set("exclude",spec.exclude.join(" "));
+    if(spec.mode)p.set("mode",spec.mode);
+    if(spec.age)p.set("age",spec.age);
+    return "https://koenokibun.doorblog.jp/archives/17519110.html?"+p.toString();
+  }
+  function renderFeaturesHome(works) {
+    var sec=findSectionByHeading("特集");
+    if(!sec)return;
+    var specs=[
+      {title:"全年齢で癒されたい",desc:"刺激より、やさしく落ち着いて聴ける作品を。",include:["癒し"],mode:"and",age:"全年齢"},
+      {title:"重すぎない執着系",desc:"執着は欲しい。でも強すぎる注意要素は避けたい日に。",include:["執着"],exclude:["監禁","命令/無理矢理","薬物","妊娠/孕ませ"],mode:"and"},
+      {title:"ストーリーに浸りたい",desc:"シチュエーションだけでなく、物語ごと楽しみたいときに。",include:["ストーリーに浸りたい"],mode:"and"}
+    ];
+    var rows=specs.map(function(s){s.count=featureMatchCount(works,s);return s;}).filter(function(s){return s.count>0;});
+    sec.innerHTML='<h2>特集</h2><p>今の作品データから、テーマ別に選びやすくまとめました。</p>'+
+      rows.map(function(s){
+        return '<div class="koe-feature-card"><div><strong>'+esc(s.title)+'</strong><span>'+s.count+'件</span></div>'+
+          '<p>'+esc(s.desc)+'</p><a class="koe-cta-link" href="'+esc(featureUrl(s))+'">この特集を見る</a></div>';
+      }).join("");
+  }
+
   function renderCvHome(works) {
     var sec = findSectionByHeading("好きなCVの作品");
     if (!sec) return;
@@ -177,6 +214,7 @@
         var homeWorks=Array.isArray(data)?data:(Array.isArray(data.works)?data.works:[]);
         renderCvHome(homeWorks);
         renderTrendsHome(homeWorks);
+        renderFeaturesHome(homeWorks);
       })
       .catch(function(){});
     return;
@@ -338,7 +376,12 @@
       circles = Array.from(new Set(circles));
       populateSelect(cv, cvs);
       populateSelect(circle, circles);
-      setMode("and");
+      var qp=new URLSearchParams(location.search);
+      if(qp.get("include")) mainQ.value=qp.get("include");
+      if(qp.get("exclude")) notQ.value=qp.get("exclude");
+      if(qp.get("age") && Array.prototype.some.call(age.options,function(o){return o.value===qp.get("age");})) age.value=qp.get("age");
+      setMode(qp.get("mode")==="or"?"or":"and");
+      if(qp.get("include")||qp.get("exclude")||qp.get("age")) runSearch();
     })
     .catch(function () {
       titleEl.textContent = "作品データを読み込めませんでした";
