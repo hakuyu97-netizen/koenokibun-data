@@ -8,7 +8,10 @@
   function isTargetPage() {
     return location.pathname === TARGET_PATH || !!document.getElementById("kk-cond-app");
   }
-  if (!isTargetPage()) return;
+  function isHomePage() {
+    return location.pathname === "/" || location.pathname === "";
+  }
+  if (!isTargetPage() && !isHomePage()) return;
 
 
   function injectStyles() {
@@ -23,7 +26,7 @@
       "#kk-results .kk-work-warn{font-size:.8rem;color:#9a4b56;background:#fff4f5;padding:7px 9px;border-radius:7px;margin:7px 0}" +
       "#kk-results .kk-work-link{display:inline-block;margin-top:7px;padding:7px 12px;border:1px solid #e5cbd3;border-radius:999px;background:#fff8fa;color:#222;text-decoration:none;font-weight:700;font-size:.82rem}" +
       "#kk-results .kk-empty{border:1px dashed #decfd4;border-radius:10px;padding:14px;color:#777;background:#fcfafb}" +
-      "#kk-cond-app .kk-mode-btn.is-active{background:#333!important;color:#fff!important;border-color:#333!important}";
+      "#kk-cond-app .kk-mode-btn.is-active{background:#333!important;color:#fff!important;border-color:#333!important}"+"".concat("#koe-home-cv{width:100%;max-width:320px;padding:9px 10px;border:1px solid #e5cbd3;border-radius:8px;background:#fff;margin:4px 0 10px}");
     document.head.appendChild(s);
   }
 
@@ -65,7 +68,65 @@
     return String(b.releaseDate || "").localeCompare(String(a.releaseDate || ""));
   }
 
+  function findSectionByHeading(text) {
+    var hs = Array.prototype.slice.call(document.querySelectorAll("h2"));
+    for (var i=0;i<hs.length;i++) {
+      if ((hs[i].textContent || "").trim() === text) return hs[i].closest("section");
+    }
+    return null;
+  }
+  function renderCvHome(works) {
+    var sec = findSectionByHeading("好きなCVの作品");
+    if (!sec) return;
+    var cvs = [];
+    works.forEach(function(w){ cvs = cvs.concat(arr(w,"cv")); });
+    cvs = Array.from(new Set(cvs.filter(Boolean))).sort(function(a,b){return String(a).localeCompare(String(b),"ja");});
+
+    sec.innerHTML =
+      '<h2>好きなCVの作品</h2>' +
+      '<p>CVを選ぶと、その声の新しい作品を表示します。</p>' +
+      '<select id="koe-home-cv" class="koe-cv-select"><option value="">CVを選んでください</option></select>' +
+      '<div id="koe-home-cv-results" class="koe-top-list"></div>' +
+      '<a class="koe-cta-link" href="https://koenokibun.doorblog.jp/archives/17519110.html">さらに条件で絞る</a>';
+
+    var sel = document.getElementById("koe-home-cv");
+    var box = document.getElementById("koe-home-cv-results");
+    if (!sel || !box) return;
+
+    cvs.forEach(function(v){
+      var o=document.createElement("option");o.value=v;o.textContent=v;sel.appendChild(o);
+    });
+
+    function show(cvName){
+      if(!cvName){box.innerHTML='<div class="koe-mini-note">CVを選ぶと、作品候補がここに表示されます。</div>';return;}
+      var list=works.filter(function(w){return arr(w,"cv").indexOf(cvName)!==-1;}).sort(latestFirst).slice(0,3);
+      if(!list.length){box.innerHTML='<div class="koe-mini-note">このCVの作品は現在のデータにありません。</div>';return;}
+      box.innerHTML=list.map(function(w){
+        var age=w.ageRating||"";
+        var badge=age==="R18"?'<span class="koe-badge koe-badge-r18">R18</span>':'<span class="koe-badge koe-badge-general">全年齢</span>';
+        var url=w.affiliate_url||w.url||"#";
+        return '<div class="koe-top-item">'+badge+
+          '<a href="'+esc(url)+'" target="_blank" rel="noopener sponsored">'+esc(w.title)+'</a>'+
+          '<div class="koe-top-meta">'+esc(w.releaseDate||"")+' / CV：'+esc(arr(w,"cv").join(" / "))+'</div></div>';
+      }).join("");
+    }
+
+    sel.addEventListener("change",function(){show(sel.value);});
+    show("");
+  }
+
   injectStyles();
+
+  if (isHomePage()) {
+    fetch(DATA_URL,{cache:"no-store"})
+      .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+      .then(function(data){
+        var homeWorks=Array.isArray(data)?data:(Array.isArray(data.works)?data.works:[]);
+        renderCvHome(homeWorks);
+      })
+      .catch(function(){});
+    return;
+  }
 
   var app = document.getElementById("kk-cond-app");
   if (!app) return;
