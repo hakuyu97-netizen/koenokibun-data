@@ -26,7 +26,7 @@
       "#kk-results .kk-work-warn{font-size:.8rem;color:#9a4b56;background:#fff4f5;padding:7px 9px;border-radius:7px;margin:7px 0}" +
       "#kk-results .kk-work-link{display:inline-block;margin-top:7px;padding:7px 12px;border:1px solid #e5cbd3;border-radius:999px;background:#fff8fa;color:#222;text-decoration:none;font-weight:700;font-size:.82rem}" +
       "#kk-results .kk-empty{border:1px dashed #decfd4;border-radius:10px;padding:14px;color:#777;background:#fcfafb}" +
-      "#kk-cond-app .kk-mode-btn.is-active{background:#333!important;color:#fff!important;border-color:#333!important}"+"".concat("#koe-home-cv{width:100%;max-width:320px;padding:9px 10px;border:1px solid #e5cbd3;border-radius:8px;background:#fff;margin:4px 0 10px}"+".koe-feature-card{border:1px solid #ecdde2;background:#fff;padding:12px 14px;margin:10px 0;border-radius:10px}"+".koe-feature-card>div{display:flex;justify-content:space-between;gap:10px;align-items:center}"+".koe-feature-card strong{font-size:.96rem}.koe-feature-card span{font-size:.76rem;color:#777}"+".koe-feature-card p{margin:6px 0 8px;font-size:.86rem;color:#655b5f}");
+      "#kk-cond-app .kk-mode-btn.is-active{background:#333!important;color:#fff!important;border-color:#333!important}"+"".concat("#koe-home-cv{width:100%;max-width:320px;padding:9px 10px;border:1px solid #e5cbd3;border-radius:8px;background:#fff;margin:4px 0 10px}"+".koe-feature-card{border:1px solid #ecdde2;background:#fff;padding:12px 14px;margin:10px 0;border-radius:10px}"+".koe-feature-card>div{display:flex;justify-content:space-between;gap:10px;align-items:center}"+".koe-feature-card strong{font-size:.96rem}.koe-feature-card span{font-size:.76rem;color:#777}"+".koe-feature-card p{margin:6px 0 8px;font-size:.86rem;color:#655b5f}"+".kk-meta-link{color:#b65b73;text-decoration:none;border-bottom:1px dotted #d7aeb9}.kk-meta-link:hover{text-decoration:none;border-bottom-style:solid}");
     document.head.appendChild(s);
   }
 
@@ -66,6 +66,18 @@
   }
   function latestFirst(a, b) {
     return String(b.releaseDate || "").localeCompare(String(a.releaseDate || ""));
+  }
+
+  function conditionUrlByMeta(kind,value) {
+    var p=new URLSearchParams();
+    if(kind==="cv")p.set("cv",value);
+    if(kind==="circle")p.set("circle",value);
+    return "https://koenokibun.doorblog.jp/archives/17519110.html?"+p.toString();
+  }
+  function metaLinks(values,kind) {
+    return (values||[]).filter(Boolean).map(function(v){
+      return '<a class="kk-meta-link" href="'+esc(conditionUrlByMeta(kind,v))+'">'+esc(v)+'</a>';
+    }).join(" / ");
   }
 
   function findSectionByHeading(text) {
@@ -197,7 +209,7 @@
         var url=w.affiliate_url||w.url||"#";
         return '<div class="koe-top-item">'+badge+
           '<a href="'+esc(url)+'" target="_blank" rel="noopener sponsored">'+esc(w.title)+'</a>'+
-          '<div class="koe-top-meta">'+esc(w.releaseDate||"")+' / CV：'+esc(arr(w,"cv").join(" / "))+'</div></div>';
+          '<div class="koe-top-meta">'+esc(w.releaseDate||"")+' / CV：'+metaLinks(arr(w,"cv"),"cv")+'</div></div>';
       }).join("");
     }
 
@@ -271,14 +283,16 @@
       return;
     }
     results.innerHTML = list.map(function (w) {
-      var cvs = arr(w, "cv").join(" / ");
+      var cvs = arr(w, "cv");
       var rel = arr(w, "relationship").join("・");
       var warnings = arr(w, "warnings");
       var url = w.affiliate_url || w.url || "#";
+      var circleText = w.circle ? '<a class="kk-meta-link" href="'+esc(conditionUrlByMeta("circle",w.circle))+'">'+esc(w.circle)+'</a>' : "";
       return ''
         + '<article class="kk-work">'
         + '<div class="kk-work-title">' + esc(w.title) + '</div>'
-        + '<div class="kk-work-meta">' + esc(w.ageRating || "") + ' / CV：' + esc(cvs || "—")
+        + '<div class="kk-work-meta">' + esc(w.ageRating || "") + ' / CV：' + (cvs.length?metaLinks(cvs,"cv"):"—")
+        + (circleText ? ' / サークル：' + circleText : '')
         + (rel ? ' / 関係：' + esc(rel) : '') + '</div>'
         + (warnings.length ? '<div class="kk-work-warn">注意：' + esc(warnings.slice(0,4).join("・")) + '</div>' : '')
         + '<a class="kk-work-link" href="' + esc(url) + '" target="_blank" rel="noopener sponsored">作品を見る</a>'
@@ -380,8 +394,10 @@
       if(qp.get("include")) mainQ.value=qp.get("include");
       if(qp.get("exclude")) notQ.value=qp.get("exclude");
       if(qp.get("age") && Array.prototype.some.call(age.options,function(o){return o.value===qp.get("age");})) age.value=qp.get("age");
+      if(qp.get("cv") && Array.prototype.some.call(cv.options,function(o){return o.value===qp.get("cv");})) cv.value=qp.get("cv");
+      if(qp.get("circle") && Array.prototype.some.call(circle.options,function(o){return o.value===qp.get("circle");})) circle.value=qp.get("circle");
       setMode(qp.get("mode")==="or"?"or":"and");
-      if(qp.get("include")||qp.get("exclude")||qp.get("age")) runSearch();
+      if(qp.get("include")||qp.get("exclude")||qp.get("age")||qp.get("cv")||qp.get("circle")) runSearch();
     })
     .catch(function () {
       titleEl.textContent = "作品データを読み込めませんでした";
