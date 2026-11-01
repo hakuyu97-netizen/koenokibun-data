@@ -75,6 +75,59 @@
     }
     return null;
   }
+  function renderTrendsHome(works) {
+    var sec = findSectionByHeading("最近増えている傾向");
+    if (!sec) return;
+
+    function parseDate(s) {
+      var d = new Date(String(s || "") + "T00:00:00");
+      return isNaN(d.getTime()) ? null : d;
+    }
+    var dates = works.map(function(w){return parseDate(w.releaseDate);}).filter(Boolean);
+    if (!dates.length) {
+      sec.innerHTML='<h2>最近増えている傾向</h2><p class="koe-mini-note">集計できる発売日データがありません。</p>';
+      return;
+    }
+    var maxDate = new Date(Math.max.apply(null, dates.map(function(d){return d.getTime();})));
+    var recentStart = new Date(maxDate); recentStart.setDate(recentStart.getDate()-29);
+    var prevEnd = new Date(recentStart); prevEnd.setDate(prevEnd.getDate()-1);
+    var prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate()-29);
+
+    function bucket(w) {
+      var out=[];
+      ["mood","affection","relationship","officialTags"].forEach(function(k){
+        arr(w,k).forEach(function(v){ if(v) out.push(v); });
+      });
+      return Array.from(new Set(out));
+    }
+    function counts(start,end) {
+      var m={};
+      works.forEach(function(w){
+        var d=parseDate(w.releaseDate);
+        if(!d || d<start || d>end) return;
+        bucket(w).forEach(function(t){m[t]=(m[t]||0)+1;});
+      });
+      return m;
+    }
+    var a=counts(recentStart,maxDate),b=counts(prevStart,prevEnd);
+    var rows=Object.keys(a).map(function(k){
+      return {tag:k,recent:a[k]||0,prev:b[k]||0,delta:(a[k]||0)-(b[k]||0)};
+    }).filter(function(x){return x.delta>0 && x.recent>=2;})
+      .sort(function(x,y){return y.delta-x.delta || y.recent-x.recent || x.tag.localeCompare(y.tag,"ja");})
+      .slice(0,5);
+
+    var period = recentStart.getFullYear()+"/"+(recentStart.getMonth()+1)+"/"+recentStart.getDate()+
+      "〜"+(maxDate.getMonth()+1)+"/"+maxDate.getDate();
+
+    sec.innerHTML =
+      '<h2>最近増えている傾向</h2>'+
+      '<p>'+esc(period)+'の作品を、その前30日と比べています。</p>'+
+      (rows.length
+        ? '<div class="koe-feature-examples">'+rows.map(function(x){return '<span>'+esc(x.tag)+' ＋'+x.delta+'</span>';}).join("")+'</div>'
+        : '<p class="koe-mini-note">今のデータでは、はっきり増えている傾向はありません。</p>')+
+      '<div class="koe-mini-note">※発売日が確認できる作品だけを集計しています。</div>';
+  }
+
   function renderCvHome(works) {
     var sec = findSectionByHeading("好きなCVの作品");
     if (!sec) return;
@@ -123,6 +176,7 @@
       .then(function(data){
         var homeWorks=Array.isArray(data)?data:(Array.isArray(data.works)?data.works:[]);
         renderCvHome(homeWorks);
+        renderTrendsHome(homeWorks);
       })
       .catch(function(){});
     return;
