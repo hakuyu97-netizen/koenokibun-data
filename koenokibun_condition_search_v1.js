@@ -240,7 +240,9 @@
     if(!current)return;
     var body=findArticleBody();
     if(!body||document.getElementById("koe-related-works"))return;
-    var list=works.filter(function(w){return w!==current;})
+    var list=works.filter(function(w){
+        return w!==current && typeof w.article_url==="string" && /^https:\/\/koenokibun\.doorblog\.jp\/archives\/\d+\.html$/.test(w.article_url);
+      })
       .map(function(w){return {w:w,s:relatedScore(current,w)};})
       .filter(function(x){return x.s>0;})
       .sort(function(a,b){return b.s-a.s || latestFirst(a.w,b.w);})
@@ -253,7 +255,7 @@
     sec.innerHTML='<h2>この作品が気になった人へ</h2><p>CV・関係性・雰囲気が近い作品から選んでいます。</p>'+
       list.map(function(x){
         var w=x.w, cvs=arr(w,"cv");
-        var url=w.affiliate_url||w.url||"#";
+        var url=w.article_url;
         return '<article class="koe-related-card">'+
           '<div class="koe-related-title"><a href="'+esc(url)+'" target="_blank" rel="noopener sponsored">'+esc(w.title)+'</a></div>'+
           '<div class="koe-related-meta">'+esc(w.ageRating||"")+' / CV：'+metaLinks(cvs,"cv")+
