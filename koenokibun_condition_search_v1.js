@@ -80,6 +80,22 @@
     }).join(" / ");
   }
 
+  function linkifyHomeCvMeta() {
+    var items=Array.prototype.slice.call(document.querySelectorAll(".koe-top-meta"));
+    items.forEach(function(el){
+      if(el.getAttribute("data-cv-linked")==="1")return;
+      var txt=el.textContent||"";
+      var m=txt.match(/CV：(.+)$/);
+      if(!m)return;
+      var raw=m[1].trim();
+      if(!raw)return;
+      var cvs=raw.split("/").map(function(x){return x.trim();}).filter(Boolean);
+      var prefix=txt.slice(0,m.index)+"CV：";
+      el.innerHTML=esc(prefix)+metaLinks(cvs,"cv");
+      el.setAttribute("data-cv-linked","1");
+    });
+  }
+
   function findSectionByHeading(text) {
     var hs = Array.prototype.slice.call(document.querySelectorAll("h2"));
     for (var i=0;i<hs.length;i++) {
@@ -213,8 +229,9 @@
       }).join("");
     }
 
-    sel.addEventListener("change",function(){show(sel.value);});
+    sel.addEventListener("change",function(){show(sel.value);setTimeout(linkifyHomeCvMeta,0);});
     show("");
+    setTimeout(linkifyHomeCvMeta,0);
   }
 
   injectStyles();
@@ -227,6 +244,7 @@
         renderCvHome(homeWorks);
         renderTrendsHome(homeWorks);
         renderFeaturesHome(homeWorks);
+        linkifyHomeCvMeta();
       })
       .catch(function(){});
     return;
