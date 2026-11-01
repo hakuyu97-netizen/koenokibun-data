@@ -234,9 +234,14 @@
     return null;
   }
   function renderRelatedWorkArticle(works){
-    var title=articleTitleText();
-    if(!title)return;
-    var current=works.find(function(w){return (w.title||"").trim()===title;});
+    var m=location.pathname.match(/^\/archives\/(\d+)\.html$/);
+    var articleId=m?m[1]:"";
+    var current=articleId ? works.find(function(w){return String(w.article_id||"")===articleId;}) : null;
+    if(!current){
+      var title=articleTitleText();
+      if(!title)return;
+      current=works.find(function(w){return (w.title||"").trim()===title;});
+    }
     if(!current)return;
     var body=findArticleBody();
     if(!body||document.getElementById("koe-related-works"))return;
