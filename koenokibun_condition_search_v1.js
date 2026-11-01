@@ -11,7 +11,15 @@
   function isHomePage() {
     return location.pathname === "/" || location.pathname === "";
   }
-  if (!isTargetPage() && !isHomePage()) return;
+  function isArchivePage() {
+    return /^\/archives\/\d+\.html$/.test(location.pathname);
+  }
+  function isNavArchive() {
+    return location.pathname === "/archives/17519089.html" ||
+           location.pathname === "/archives/17519110.html" ||
+           location.pathname === "/archives/17506241.html";
+  }
+  if (!isTargetPage() && !isHomePage() && !(isArchivePage() && !isNavArchive())) return;
 
 
   function injectStyles() {
@@ -26,7 +34,7 @@
       "#kk-results .kk-work-warn{font-size:.8rem;color:#9a4b56;background:#fff4f5;padding:7px 9px;border-radius:7px;margin:7px 0}" +
       "#kk-results .kk-work-link{display:inline-block;margin-top:7px;padding:7px 12px;border:1px solid #e5cbd3;border-radius:999px;background:#fff8fa;color:#222;text-decoration:none;font-weight:700;font-size:.82rem}" +
       "#kk-results .kk-empty{border:1px dashed #decfd4;border-radius:10px;padding:14px;color:#777;background:#fcfafb}" +
-      "#kk-cond-app .kk-mode-btn.is-active{background:#333!important;color:#fff!important;border-color:#333!important}"+"".concat("#koe-home-cv{width:100%;max-width:320px;padding:9px 10px;border:1px solid #e5cbd3;border-radius:8px;background:#fff;margin:4px 0 10px}"+".koe-feature-card{border:1px solid #ecdde2;background:#fff;padding:12px 14px;margin:10px 0;border-radius:10px}"+".koe-feature-card>div{display:flex;justify-content:space-between;gap:10px;align-items:center}"+".koe-feature-card strong{font-size:.96rem}.koe-feature-card span{font-size:.76rem;color:#777}"+".koe-feature-card p{margin:6px 0 8px;font-size:.86rem;color:#655b5f}"+".kk-meta-link{color:#b65b73;text-decoration:none;border-bottom:1px dotted #d7aeb9}.kk-meta-link:hover{text-decoration:none;border-bottom-style:solid}");
+      "#kk-cond-app .kk-mode-btn.is-active{background:#333!important;color:#fff!important;border-color:#333!important}"+"".concat("#koe-home-cv{width:100%;max-width:320px;padding:9px 10px;border:1px solid #e5cbd3;border-radius:8px;background:#fff;margin:4px 0 10px}"+".koe-feature-card{border:1px solid #ecdde2;background:#fff;padding:12px 14px;margin:10px 0;border-radius:10px}"+".koe-feature-card>div{display:flex;justify-content:space-between;gap:10px;align-items:center}"+".koe-feature-card strong{font-size:.96rem}.koe-feature-card span{font-size:.76rem;color:#777}"+".koe-feature-card p{margin:6px 0 8px;font-size:.86rem;color:#655b5f}"+".kk-meta-link{color:#b65b73;text-decoration:none;border-bottom:1px dotted #d7aeb9}.kk-meta-link:hover{text-decoration:none;border-bottom-style:solid}"+".koe-related{margin:28px 0 10px;padding-top:18px;border-top:2px solid #eee}.koe-related h2{font-size:1.15rem;margin:0 0 6px}.koe-related>p{font-size:.86rem;color:#666;margin:0 0 12px}"+".koe-related-card{border:1px solid #ecdde2;border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff}.koe-related-title{font-weight:700;line-height:1.55}.koe-related-title a{color:#222;text-decoration:none}.koe-related-meta{font-size:.78rem;color:#777;margin-top:5px}");
     document.head.appendChild(s);
   }
 
@@ -193,6 +201,69 @@
       }).join("");
   }
 
+  function jaccard(a,b){
+    var A=new Set((a||[]).filter(Boolean)),B=new Set((b||[]).filter(Boolean));
+    if(!A.size&&!B.size)return 0;
+    var inter=0;A.forEach(function(x){if(B.has(x))inter++;});
+    return inter/(A.size+B.size-inter||1);
+  }
+  function relatedScore(a,b){
+    var s=0;
+    if(a.circle&&b.circle&&a.circle===b.circle)s+=3;
+    if(arr(a,"cv").some(function(x){return arr(b,"cv").indexOf(x)!==-1;}))s+=4;
+    s+=2*jaccard(arr(a,"relationship"),arr(b,"relationship"));
+    s+=2*jaccard(arr(a,"affection"),arr(b,"affection"));
+    s+=2*jaccard(arr(a,"mood"),arr(b,"mood"));
+    s+=1.5*jaccard(arr(a,"officialTags"),arr(b,"officialTags"));
+    return s;
+  }
+  function articleTitleText(){
+    var sels=["h1.article-title","h1.entry-title","h1","h2.article-title","h2.entry-title"];
+    for(var i=0;i<sels.length;i++){
+      var e=document.querySelector(sels[i]);
+      if(e && (e.textContent||"").trim()) return (e.textContent||"").trim();
+    }
+    return "";
+  }
+  function findArticleBody(){
+    var sels=[".article-body",".article-body-inner",".entry-body",".article-content",".article"];
+    for(var i=0;i<sels.length;i++){
+      var e=document.querySelector(sels[i]);
+      if(e)return e;
+    }
+    return null;
+  }
+  function renderRelatedWorkArticle(works){
+    var title=articleTitleText();
+    if(!title)return;
+    var current=works.find(function(w){return (w.title||"").trim()===title;});
+    if(!current)return;
+    var body=findArticleBody();
+    if(!body||document.getElementById("koe-related-works"))return;
+    var list=works.filter(function(w){return w!==current;})
+      .map(function(w){return {w:w,s:relatedScore(current,w)};})
+      .filter(function(x){return x.s>0;})
+      .sort(function(a,b){return b.s-a.s || latestFirst(a.w,b.w);})
+      .slice(0,3);
+    if(!list.length)return;
+
+    var sec=document.createElement("section");
+    sec.id="koe-related-works";
+    sec.className="koe-related";
+    sec.innerHTML='<h2>この作品が気になった人へ</h2><p>CV・関係性・雰囲気が近い作品から選んでいます。</p>'+
+      list.map(function(x){
+        var w=x.w, cvs=arr(w,"cv");
+        var url=w.affiliate_url||w.url||"#";
+        return '<article class="koe-related-card">'+
+          '<div class="koe-related-title"><a href="'+esc(url)+'" target="_blank" rel="noopener sponsored">'+esc(w.title)+'</a></div>'+
+          '<div class="koe-related-meta">'+esc(w.ageRating||"")+' / CV：'+metaLinks(cvs,"cv")+
+          (w.circle?' / サークル：<a class="kk-meta-link" href="'+esc(conditionUrlByMeta("circle",w.circle))+'">'+esc(w.circle)+'</a>':'')+
+          '</div></article>';
+      }).join("")+
+      '<a class="koe-cta-link" href="https://koenokibun.doorblog.jp/archives/17519110.html">条件からもっと探す</a>';
+    body.appendChild(sec);
+  }
+
   function renderCvHome(works) {
     var sec = findSectionByHeading("好きなCVの作品");
     if (!sec) return;
@@ -250,7 +321,18 @@
     return;
   }
 
-  var app = document.getElementById("kk-cond-app");
+  if (isArchivePage() && !isNavArchive() && !isTargetPage()) {
+    fetch(DATA_URL,{cache:"no-store"})
+      .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+      .then(function(data){
+        var articleWorks=Array.isArray(data)?data:(Array.isArray(data.works)?data.works:[]);
+        renderRelatedWorkArticle(articleWorks);
+      })
+      .catch(function(){});
+    return;
+  }
+
+    var app = document.getElementById("kk-cond-app");
   if (!app) return;
 
   var mainQ = document.getElementById("kk-main-query");
