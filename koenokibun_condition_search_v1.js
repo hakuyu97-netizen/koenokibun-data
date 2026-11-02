@@ -88,6 +88,26 @@
     }).join(" / ");
   }
 
+  function upgradeInternalArticleLinks(scope) {
+    var root=scope||document;
+    var links=Array.prototype.slice.call(root.querySelectorAll("a[data-article-id]"));
+    links.forEach(function(a){
+      var aid=a.getAttribute("data-article-id")||"";
+      if(!/^\d+$/.test(aid))return;
+      var internal="https://koenokibun.doorblog.jp/archives/"+aid+".html";
+      fetch(internal,{method:"GET",cache:"no-store",credentials:"same-origin"})
+        .then(function(r){
+          if(!r.ok)return;
+          a.href=internal;
+          a.textContent="紹介記事を見る";
+          a.removeAttribute("target");
+          a.removeAttribute("rel");
+          a.setAttribute("data-internal-article","1");
+        })
+        .catch(function(){});
+    });
+  }
+
   function linkifyHomeCvMeta() {
     var items=Array.prototype.slice.call(document.querySelectorAll(".koe-top-meta"));
     items.forEach(function(el){
@@ -311,10 +331,12 @@
         var age=w.ageRating||"";
         var badge=age==="R18"?'<span class="koe-badge koe-badge-r18">R18</span>':'<span class="koe-badge koe-badge-general">全年齢</span>';
         var url=w.affiliate_url||w.url||"#";
+        var aid=/^\d+$/.test(String(w.article_id||""))?String(w.article_id):"";
         return '<div class="koe-top-item">'+badge+
-          '<a href="'+esc(url)+'" target="_blank" rel="noopener sponsored">'+esc(w.title)+'</a>'+
+          '<a href="'+esc(url)+'" target="_blank" rel="noopener sponsored"'+(aid?' data-article-id="'+esc(aid)+'"':'')+'>'+esc(w.title)+'</a>'+
           '<div class="koe-top-meta">'+esc(w.releaseDate||"")+' / CV：'+metaLinks(arr(w,"cv"),"cv")+'</div></div>';
       }).join("");
+      upgradeInternalArticleLinks(box);
     }
 
     sel.addEventListener("change",function(){show(sel.value);setTimeout(linkifyHomeCvMeta,0);});
@@ -404,6 +426,7 @@
       var rel = arr(w, "relationship").join("・");
       var warnings = arr(w, "warnings");
       var url = w.affiliate_url || w.url || "#";
+      var articleId = /^\d+$/.test(String(w.article_id||"")) ? String(w.article_id) : "";
       var circleText = w.circle ? '<a class="kk-meta-link" href="'+esc(conditionUrlByMeta("circle",w.circle))+'">'+esc(w.circle)+'</a>' : "";
       return ''
         + '<article class="kk-work">'
@@ -412,9 +435,10 @@
         + (circleText ? ' / サークル：' + circleText : '')
         + (rel ? ' / 関係：' + esc(rel) : '') + '</div>'
         + (warnings.length ? '<div class="kk-work-warn">注意：' + esc(warnings.slice(0,4).join("・")) + '</div>' : '')
-        + '<a class="kk-work-link" href="' + esc(url) + '" target="_blank" rel="noopener sponsored">作品を見る</a>'
+        + '<a class="kk-work-link" href="' + esc(url) + '" target="_blank" rel="noopener sponsored"' + (articleId ? ' data-article-id="' + esc(articleId) + '"' : '') + '>DLsiteで見る</a>'
         + '</article>';
     }).join("");
+    upgradeInternalArticleLinks(results);
   }
 
   function savePrefs() {
